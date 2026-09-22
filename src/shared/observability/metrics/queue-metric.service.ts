@@ -10,40 +10,10 @@ export class QueueMetricService implements OnModuleInit {
   constructor(
     private readonly metrics: MetricsService,
 
-    @InjectQueue('ai-final-review')
-    aiFinalReview: Queue,
-
-    @InjectQueue('ai-grade')
-    aiGrade: Queue,
-
-    @InjectQueue('ai-light')
-    aiLight: Queue,
-
-    @InjectQueue('ai-chat')
-    aiChat: Queue,
-
-    @InjectQueue('sms')
-    smsQueue: Queue,
-
-    @InjectQueue('storage-cleanup')
-    storageCleanupQueue: Queue,
-
-    @InjectQueue('invoice-generator')
-    invoiceGeneratorQueue: Queue,
-
     @InjectQueue('subscription-renewal')
     subscriptionRenewalQueue: Queue,
   ) {
-    this.queues = [
-      ['ai-final-review', aiFinalReview],
-      ['ai-grade', aiGrade],
-      ['ai-light', aiLight],
-      ['ai-chat', aiChat],
-      ['sms', smsQueue],
-      ['storage-cleanup', storageCleanupQueue],
-      ['invoice-generator', invoiceGeneratorQueue],
-      ['subscription-renewal', subscriptionRenewalQueue],
-    ];
+    this.queues = [['subscription-renewal', subscriptionRenewalQueue]];
   }
 
   onModuleInit() {

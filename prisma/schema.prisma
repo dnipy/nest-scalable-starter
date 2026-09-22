@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id String                                   @id @default(uuid())
+
+  email String 
+  passwordHash String                         @map("password_hash")
+  
+  status UserStatus @default(PENDING_PROFILE)
+
+  createdAt DateTime @default(now())          @map("created_at")
+  disabledAt DateTime?                        @map("disabled_at")
+  
+  
+  profile Profile?
+  aiSummary AiSummary?
+  aiJobs  AiJob[]
+
+  @@unique([email])
+  @@index([createdAt])
+}
+
+
+
+model Profile {
+ id String @id @default(uuid())
+
+
+ firstName String @map("first_name")
+ lastName String  @map("last_name")
+ age Int? 
+
+
+ occupation String
+ experienceYears Int  @map("experience_years")
+ education String?
+ skills String[]
+ interests String[]
+ goals String[]
+ preferredWorkStyle String? @map("preferred_work_style")
+
+
+ bio String @db.Text
+
+ createdAt DateTime @default(now()) @map("created_at")
+ updatedAt DateTime @updatedAt @map("updated_at")
+
+
+ userId String @map("user_id")
+ user User @relation(fields:[userId], references:[id])
+
+
+ @@unique([userId])
+}
+
+
+
+model AiJob {
+ id String @id @default(uuid())
+
+
+ type AiJobType
+ status AiJobStatus @default(PENDING)
+
+ input Json
+ output Json?
+
+ error String?
+
+ attempts Int @default(0)
+
+ createdAt DateTime @default(now())         @map("created_at")
+ startedAt DateTime?                        @map("started_at")
+ completedAt DateTime?                      @map("completed_at")
+
+
+ userId String                              @map("user_id")
+ user User @relation(fields:[userId], references:[id])
+
+ @@index([status])
+ @@index([userId])
+ @@index([userId,type,status])
+}
+
+
+model AiSummary {
+  id String @id @default(uuid())
+
+  userId String @map("user_id")
+
+  title String
+
+  summary String @db.Text
+
+  strengths String[] @default([])
+
+  recommendations String[] @default([])
+
+  generatedAt DateTime @default(now()) @map("generated_at")
+
+
+  user User @relation(fields:[userId], references:[id])
+
+
+  @@unique([userId])
+  @@index([userId])
+}
+
+
+enum UserStatus {
+  PENDING_PROFILE
+  PROCESSING
+  READY
+}
+
+enum AiJobType {
+  SUMMARY
+}
+
+enum AiJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}

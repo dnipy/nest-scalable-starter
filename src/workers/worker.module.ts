@@ -4,4 +4,4 @@ import { Module } from '@nestjs/common';
   imports: [],
   exports: [],
 })
-export class WorkerFeaturesModule {}
+export class WorkerModule {}

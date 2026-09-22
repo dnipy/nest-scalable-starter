@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 export const envSchema = z.object({
-  // NODE_ENV: z
-  //   .enum(['development', 'production', 'test'])
-  //   .default('development'),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
   // APP_PUBLIC_BASE_URL: z.string().url(),
-  // PORT: z.coerce.number().default(3000),
-  // DATABASE_URL: z.string().min(1), // pooler
+  PORT: z.coerce.number().default(3000),
+  DATABASE_URL: z.string().min(1), // pooler
   // DATABASE_DIRECT_URL: z.string().min(1), // the actual db
   // JWT_SECRET: z.string().min(16),
   // JWT_EXPIRES_IN: z.coerce.number().positive(),

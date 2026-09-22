@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../../../generated/prisma/client';
 import { HttpStatus } from '@nestjs/common';
 import { AppException } from '../exceptions/app.exception';
 import { ErrorCode } from '../exceptions/error-code.enum';

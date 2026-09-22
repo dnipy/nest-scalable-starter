@@ -1,10 +1,13 @@
 import {
   BeforeApplicationShutdown,
+  Inject,
   Injectable,
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { ShutdownService } from './shutdown.service';
 import { AlertService } from '../../observability/alert/alert.service';
+import { PrismaService } from 'src/shared/infrastructure/database/prisma/prisma.service';
+import Redis from 'ioredis';
 
 @Injectable()
 export class ShutdownLifecycle
@@ -13,6 +16,8 @@ export class ShutdownLifecycle
   constructor(
     private readonly alert: AlertService,
     private readonly shutdown: ShutdownService,
+    private readonly prisma: PrismaService,
+    @Inject('REDIS') readonly redis: Redis,
   ) {}
 
   async beforeApplicationShutdown(signal?: string) {
@@ -24,7 +29,10 @@ export class ShutdownLifecycle
     );
   }
 
-  onApplicationShutdown(signal?: string) {
+  async onApplicationShutdown(signal?: string) {
+    await this.prisma.$disconnect();
+    this.redis.disconnect();
+
     console.log(
       'ON_APPLICATION_SHUTDOWN',
       `[${signal}]`,

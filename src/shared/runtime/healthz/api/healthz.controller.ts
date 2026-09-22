@@ -3,13 +3,13 @@ import Redis from 'ioredis';
 import { PinoLogger } from 'nestjs-pino';
 import { AppException } from 'src/shared/http/exceptions/app.exception';
 import { ErrorCode } from 'src/shared/http/exceptions/error-code.enum';
-// import { PrismaService } from 'src/shared/infra/prisma/prisma.service';
+import { PrismaService } from 'src/shared/infrastructure/database/prisma/prisma.service';
 import { ShutdownService } from 'src/shared/runtime/shutdown/shutdown.service';
 
 @Controller('healthz')
 export class HealthzController {
   constructor(
-    // private prisma: PrismaService,
+    private prisma: PrismaService,
     private readonly logger: PinoLogger,
     private readonly shutdown: ShutdownService,
     @Inject('REDIS') private readonly redis: Redis,
@@ -22,10 +22,9 @@ export class HealthzController {
     if (this.shutdown.isShuttingDown()) {
       throw new AppException(ErrorCode.SERVICE_UNAVAILABLE, 503);
     }
-    const db_ok = true;
-    // await this.prisma.$queryRaw`SELECT 1`
-    //   .then(() => true)
-    //   .catch(() => false);
+    const db_ok = await this.prisma.$queryRaw`SELECT 1`
+      .then(() => true)
+      .catch(() => false);
 
     const redis_ok = await this.redis
       .ping()
