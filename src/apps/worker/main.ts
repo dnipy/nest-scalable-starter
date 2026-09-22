@@ -1,12 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { WorkerModule } from './worker.module';
+import { Logger } from 'nestjs-pino';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(WorkerModule, {
     bufferLogs: true,
   });
+  const logger = app.get(Logger);
 
-  console.log('worker started');
+  logger.log('worker started');
 
   const shutdown = async (signal: string) => {
     await app.close();
