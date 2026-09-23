@@ -1,0 +1,178 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: 1 min
+    folder: Nestapp
+    interval: 1m
+    rules:
+      - uid: cfyvid5kvsd1cc
+        title: HttpErrorRateHigh
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: "(\r\n  100 *\r\n  (sum(rate(nestapp_http_requests_total{status_code=~\"5..\"}[5m])) or vector(0))\r\n  /\r\n  sum(rate(nestapp_http_requests_total[5m]))\r\n)\r\nor vector(0)"
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            queryType: expression
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 5
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          description: |-
+            More than 5% of HTTP requests have returned 5xx responses
+            for at least 5 minutes.
+          summary: API HTTP error rate is high
+        labels:
+          category: http
+          service: nestapp-api
+          severity: warning
+        isPaused: false
+      - uid: efyx51nzgbfnka
+        title: HttpLatencyHigh
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: "histogram_quantile(\r\n  0.95,\r\n  sum by (le) (\r\n    rate(nestapp_http_request_duration_milliseconds_bucket[10m])\r\n  )\r\n)"
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            queryType: expression
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 1000
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 10m
+        annotations:
+          description: |-
+            HTTP p95 latency has remained above 1000ms
+                for at least 10 minutes.
+          summary: API HTTP latency is high
+        labels:
+          category: http
+          service: nestapp-api
+          severity: warning
+        isPaused: false
+      - uid: cfyxshs5fmwaob
+        title: AiFailureRateHigh
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: PBFA97CFB590B2093
+            model:
+              editorMode: code
+              expr: "(\r\n  100 *\r\n  (sum(rate(nestapp_ai_request_failed_total[10m])) or vector(0))\r\n  /\r\n  sum(rate(nestapp_ai_request_started_total[10m]))\r\n)\r\nor vector(0)"
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: C
+            queryType: expression
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 10
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
+        for: 10m
+        annotations:
+          description: |-
+            AI request failure rate has remained above 10%
+            for at least 10 minutes.
+          summary: AI failure rate is high
+        labels:
+          category: ai
+          service: nestapp-api
+          severity: warning
+        isPaused: false

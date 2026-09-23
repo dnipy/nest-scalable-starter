@@ -3,7 +3,7 @@ import { context, Span, SpanStatusCode, trace } from '@opentelemetry/api';
 
 @Injectable()
 export class TracingService {
-  private readonly tracer = trace.getTracer('langoo');
+  private readonly tracer = trace.getTracer('scalable_app');
 
   startSpan(name: string): Span {
     return this.tracer.startSpan(name);

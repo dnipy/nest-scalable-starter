@@ -1,0 +1,285 @@
+x-common: &common
+  restart: unless-stopped
+
+  env_file:
+    - .env
+
+  networks:
+    - nestapp-network
+
+  init: true
+
+  logging:
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "10"
+
+  stop_grace_period: 30s
+
+services:
+  #################################################
+  # PostgreSQL
+  #################################################
+
+  postgres:
+    <<: *common
+
+    image: postgres:17-alpine
+    container_name: nestapp_postgres
+
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    ports:
+      - "127.0.0.1:25432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+      - ./conf/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  #################################################
+  # Redis
+  #################################################
+
+  redis:
+    <<: *common
+
+    image: redis:7
+    container_name: nestapp_redis
+
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+
+    expose:
+      - "6379"
+
+    volumes:
+      - redis_data:/data
+
+      - ./conf/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  #################################################
+  # Migrate
+  #################################################
+  migrate:
+    <<: *common
+    restart: "no"
+
+    image: nestapp:latest
+    container_name: nestapp_migrate
+
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  #################################################
+  # PgBouncer
+  #################################################
+
+  pgbouncer:
+    <<: *common
+
+    image: ghcr.io/dnipy/pgbouncer:1.17.0
+
+    container_name: nestapp_pgbouncer
+
+    environment:
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_USERNAME: ${POSTGRES_USER}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRESQL_DATABASE: ${POSTGRES_DB}
+
+      PGBOUNCER_DATABASE: ${POSTGRES_DB}
+
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: 500
+      PGBOUNCER_DEFAULT_POOL_SIZE: 20
+      PGBOUNCER_MIN_POOL_SIZE: 5
+      PGBOUNCER_RESERVE_POOL_SIZE: 5
+      PGBOUNCER_RESERVE_POOL_TIMEOUT: 5
+      PGBOUNCER_SERVER_IDLE_TIMEOUT: 600
+      PGBOUNCER_IGNORE_STARTUP_PARAMETERS: extra_float_digits
+
+    expose:
+      - "6432"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "PGPASSWORD=${POSTGRES_PASSWORD} psql -h localhost -p 6432 -U ${POSTGRES_USER} -d pgbouncer -c 'SHOW VERSION;' >/dev/null 2>&1",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  #################################################
+  # API
+  #################################################
+
+  api:
+    <<: *common
+
+    image: nestapp:latest
+
+    build:
+      context: ../../
+
+      dockerfile: Dockerfile
+
+    container_name: nestapp_api
+
+    security_opt:
+      - no-new-privileges:true
+
+    command:
+      - node
+      - dist/src/apps/api/main.js
+
+    expose:
+      - "3000"
+
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+
+      migrate:
+        condition: service_completed_successfully
+
+      redis:
+        condition: service_healthy
+
+    read_only: true
+
+    tmpfs:
+      - /tmp
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+    cpus: "1"
+
+    mem_limit: 2g
+
+  #################################################
+  # Worker
+  #################################################
+
+  worker:
+    <<: *common
+
+    image: nestapp:latest
+
+    container_name: nestapp_worker
+
+    security_opt:
+      - no-new-privileges:true
+
+    command:
+      - node
+      - dist/src/apps/worker/main.js
+
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+
+      migrate:
+        condition: service_completed_successfully
+
+      redis:
+        condition: service_healthy
+
+    read_only: true
+
+    tmpfs:
+      - /tmp
+
+    cpus: "1"
+
+    mem_limit: 1g
+
+  #################################################
+  # Caddy
+  #################################################
+
+  caddy:
+    <<: *common
+
+    image: caddy:2-alpine
+
+    container_name: nestapp_caddy
+
+    security_opt:
+      - no-new-privileges:true
+
+    depends_on:
+      api:
+        condition: service_started
+
+    ports:
+      - "80:80"
+
+      - "443:443"
+
+    volumes:
+      - ./conf/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+
+      - caddy_data:/data
+
+      - caddy_config:/config
+
+#################################################
+# Networks
+#################################################
+
+networks:
+  nestapp-network:
+    external: true
+    name: nestapp-network
+
+#################################################
+# Volumes
+#################################################
+
+volumes:
+  postgres_data:
+
+  redis_data:
+
+  caddy_data:
+
+  caddy_config:

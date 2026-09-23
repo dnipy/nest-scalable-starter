@@ -4,7 +4,6 @@ export const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
-  // APP_PUBLIC_BASE_URL: z.string().url(),
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().min(1), // pooler
   // DATABASE_DIRECT_URL: z.string().min(1), // the actual db
@@ -36,10 +35,6 @@ export const envSchema = z.object({
   // STORAGE_ENDPOINT: z.string().optional(),
   // STORAGE_ACCESS_KEY: z.string().min(1),
   // STORAGE_SECRET_KEY: z.string().min(1),
-  // // buckets
-  // S3_BUCKET_DOCUMENT: z.string().default('langoo-documents'),
-  // S3_BUCKET_BACKUP: z.string().default('langoo-backups'),
-  // S3_BUCKET_LOG: z.string().default('langoo-logs'),
 });
 
 export type Env = z.infer<typeof envSchema>;

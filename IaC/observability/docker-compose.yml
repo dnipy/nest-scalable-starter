@@ -1,0 +1,121 @@
+services:
+  prometheus:
+    container_name: nestapp_prometheus
+    image: prom/prometheus:v3.14.0
+    restart: unless-stopped
+
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-otlp-receiver"
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+
+    ports:
+      - "9090:9090"
+
+    networks:
+      - nestapp-network
+
+  loki:
+    container_name: nestapp_loki
+    image: grafana/loki:3.7.7
+    restart: unless-stopped
+
+    command:
+      - "-config.file=/etc/loki/loki.yml"
+
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - lokidata:/loki
+
+    ports:
+      - "3100:3100"
+
+    networks:
+      - nestapp-network
+
+  tempo:
+    container_name: nestapp_tempo
+    image: grafana/tempo:3.0.3
+    restart: unless-stopped
+
+    command:
+      - "-config.file=/etc/tempo/tempo.yml"
+
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempodata:/var/tempo
+
+    ports:
+      - "3200:3200"
+
+    networks:
+      - nestapp-network
+
+  alloy:
+    container_name: nestapp_alloy
+    image: grafana/alloy:v1.12.0
+    restart: unless-stopped
+
+    command:
+      - "run"
+      - "--server.http.listen-addr=0.0.0.0:12345"
+      - "/etc/alloy/config.alloy"
+
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+
+      # Docker container log discovery
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../logs:/var/log/nestapp:ro
+
+    ports:
+      - "12345:12345"
+      - "4317:4317"
+      - "4318:4318"
+
+    networks:
+      - nestapp-network
+
+  grafana:
+    container_name: nestapp_grafana
+    image: grafana/grafana:13.2.2
+    restart: unless-stopped
+
+    # environment:
+    #   GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+    #   GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+
+    env_file:
+      - ./.env
+
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+
+    ports:
+      - "3001:3000"
+
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+    networks:
+      - nestapp-network
+
+volumes:
+  prometheusdata:
+  lokidata:
+  tempodata:
+  grafanadata:
+
+networks:
+  nestapp-network:
+    external: true
+    name: nestapp-network
