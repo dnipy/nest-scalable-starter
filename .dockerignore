@@ -32,3 +32,6 @@ coverage
 
 # prisma cache
 node_modules/.prisma
+
+
+src/shared/infrastructure/database/prisma/client

@@ -1,5 +1,5 @@
 {
-  "name": "nest-scalable-starter",
+  "name": "nestapp",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -8,10 +8,13 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start:api": "node  dist/src/apps/api/main.js",
-    "start:worker": "node  dist/src/apps/worker/main.js",
-    "start:dev:api": "nest start --watch --entryFile apps/api/main",
-    "start:dev:worker": "nest start --watch --entryFile apps/worker/main"
+    "start:api": "node --require ./scripts/otel-instrumentation.js dist/src/apps/api/main.js",
+    "start:worker": "node --require ./scripts/otel-instrumentation.js dist/src/apps/worker/main.js",
+    "start:dev:api": "cross-env LOG_FILE=./logs/api.log OTEL_SERVICE_NAME=nestapp-api NODE_OPTIONS=\"--require ./scripts/otel-instrumentation.js\" nest start --watch --entryFile apps/api/main",
+    "start:dev:worker": "cross-env LOG_FILE=./logs/worker.log OTEL_SERVICE_NAME=nestapp-worker NODE_OPTIONS=\"--require ./scripts/otel-instrumentation.js\" nest start --watch --entryFile apps/worker/main",
+    "prisma:generate": "npx prisma generate",
+    "prisma:migrate:dev": "npx prisma migrate dev",
+    "prisma:studio": "npx prisma studio"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.995.0",
@@ -45,6 +48,7 @@
     "bullmq": "^5.76.10",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "cross-env": "^10.1.0",
     "express-basic-auth": "^1.2.1",
     "express-rate-limit": "^8.5.2",
     "ioredis": "^5.9.3",

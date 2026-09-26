@@ -14,8 +14,8 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheusdata:/prometheus
 
-    ports:
-      - "9090:9090"
+    expose:
+      - "9090"
 
     networks:
       - nestapp-network
@@ -32,8 +32,8 @@ services:
       - ./loki/loki.yml:/etc/loki/loki.yml:ro
       - lokidata:/loki
 
-    ports:
-      - "3100:3100"
+    expose:
+      - "3100"
 
     networks:
       - nestapp-network
@@ -50,8 +50,8 @@ services:
       - ./tempo/tempo.yml:/etc/tempo/tempo.yml:ro
       - tempodata:/var/tempo
 
-    ports:
-      - "3200:3200"
+    expose:
+      - "3200"
 
     networks:
       - nestapp-network
@@ -73,10 +73,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../logs:/var/log/nestapp:ro
 
-    ports:
-      - "12345:12345"
-      - "4317:4317"
-      - "4318:4318"
+    expose:
+      - "3200"
+      - "4317"
+      - "4318"
 
     networks:
       - nestapp-network
