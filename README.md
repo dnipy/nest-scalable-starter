@@ -1,99 +1,721 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Nest Scalable Starter
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A production-oriented **NestJS backend starter** designed around clear service boundaries, background processing, infrastructure isolation, and built-in observability.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+This repository is primarily a **software architecture showcase** rather than a generic CRUD boilerplate. It demonstrates how I approach structuring a NestJS application that needs to grow beyond a single HTTP process.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Architecture
 
-## Project setup
+The application is intentionally split into separate runtime processes:
 
-```bash
-$ npm install
+```text
+                         ┌─────────────────────┐
+                         │       Client        │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                         ┌─────────────────────┐
+                         │      API App        │
+                         │      NestJS         │
+                         └──────────┬──────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    │               │               │
+                    ▼               ▼               ▼
+               PostgreSQL        Redis          WebSocket
+                    │               │               │
+                    │               ▼               │
+                    │            BullMQ              │
+                    │               │               │
+                    │               ▼               │
+                    │        ┌─────────────┐         │
+                    │        │   Worker    │         │
+                    │        │   NestJS    │         │
+                    │        └──────┬──────┘         │
+                    │               │                │
+                    └───────────────┼────────────────┘
+                                    │
+                                    ▼
+                           External Services
 ```
 
-## Compile and run the project
+The API and worker are separate NestJS applications sharing the same codebase and infrastructure layer.
 
-```bash
-# development
-$ npm run start
+This allows HTTP workloads and background workloads to scale independently.
 
-# watch mode
-$ npm run start:dev
+---
 
-# production mode
-$ npm run start:prod
+# Project Structure
+
+```text
+src/
+├── apps/
+│   ├── api/
+│   │   ├── api.module.ts
+│   │   └── main.ts
+│   │
+│   └── worker/
+│       ├── main.ts
+│       └── worker.module.ts
+│
+├── features/
+│   └── features.module.ts
+│
+├── shared/
+│   ├── http/
+│   │   ├── exceptions/
+│   │   ├── filters/
+│   │   ├── interceptors/
+│   │   ├── middleware/
+│   │   └── throttler/
+│   │
+│   ├── infrastructure/
+│   │   ├── cache/
+│   │   ├── config/
+│   │   ├── database/
+│   │   │   └── prisma/
+│   │   ├── queue/
+│   │   └── redis/
+│   │
+│   ├── observability/
+│   │   ├── alert/
+│   │   ├── error-tracking/
+│   │   ├── logger/
+│   │   ├── metrics/
+│   │   └── tracing/
+│   │
+│   ├── runtime/
+│   │   ├── bootstrap/
+│   │   ├── healthz/
+│   │   └── shutdown/
+│   │
+│   └── websocket/
+│
+└── workers/
+    └── worker.module.ts
+
+IaC/
+├── app/
+│   ├── docker-compose.yml
+│   ├── .env.sample
+│   └── conf/
+│       ├── caddy/
+│       ├── postgres/
+│       └── redis/
+│
+└── observability/
+    ├── docker-compose.yml
+    ├── alloy/
+    ├── grafana/
+    ├── loki/
+    ├── prometheus/
+    └── tempo/
 ```
 
-## Run tests
+The structure separates **business features**, **shared application concerns**, **infrastructure**, and **runtime concerns** instead of putting everything under a flat collection of modules.
 
-```bash
-# unit tests
-$ npm run test
+---
 
-# e2e tests
-$ npm run test:e2e
+# Design Principles
 
-# test coverage
-$ npm run test:cov
+## API / Worker Separation
+
+The API process is responsible for request/response workloads.
+
+The worker process handles asynchronous workloads through BullMQ.
+
+```text
+HTTP Request
+     │
+     ▼
+    API
+     │
+     ▼
+   BullMQ
+     │
+     ▼
+   Worker
+     │
+     ▼
+Background processing
 ```
 
-## Deployment
+This avoids turning long-running or resource-intensive operations into HTTP request problems.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+It also makes independent scaling possible:
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g mau
-$ mau deploy
+```text
+API     × N
+Worker  × M
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## Shared Infrastructure, Separate Runtime
 
-Check out a few resources that may come in handy when working with NestJS:
+The API and worker use the same underlying infrastructure modules:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- PostgreSQL / Prisma
+- Redis
+- BullMQ
+- Logging
+- Metrics
+- Tracing
+- Error tracking
+- Configuration
+- Runtime lifecycle management
 
-## Support
+But they have independent bootstrap entry points.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+This keeps the runtime boundary explicit without duplicating infrastructure code.
 
-## Stay in touch
+---
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# Infrastructure
+
+The application infrastructure is containerized and separated from the application code.
+
+### Application stack
+
+The application environment can include:
+
+- NestJS API
+- NestJS Worker
+- PostgreSQL
+- Redis
+- Caddy
+- supporting infrastructure
+
+### Observability stack
+
+Observability is intentionally separated into its own compose environment:
+
+```text
+Application VPS
+│
+├── API
+├── Worker
+├── PostgreSQL
+├── Redis
+└── ...
+       │
+       │ OpenTelemetry
+       │
+       ▼
+Observability VPS
+│
+├── Alloy
+├── Prometheus
+├── Loki
+├── Tempo
+└── Grafana
+```
+
+This mirrors a production setup where application infrastructure and observability infrastructure can live on different machines.
+
+---
+
+# Observability
+
+Observability is a first-class part of the starter rather than something added after deployment.
+
+The stack is based around OpenTelemetry and Grafana's observability ecosystem.
+
+```text
+                    Application
+                        │
+            ┌───────────┼───────────┐
+            │           │           │
+           Logs       Metrics      Traces
+            │           │           │
+            ▼           ▼           ▼
+           Alloy    Prometheus     Tempo
+            │                       │
+            ▼                       │
+           Loki                     │
+            │           ┌───────────┘
+            │           │
+            └──────┬────┘
+                   ▼
+                Grafana
+```
+
+### Logs
+
+Application logging uses structured logging with Pino.
+
+Request logging includes:
+
+- request IDs
+- HTTP method
+- route
+- status
+- timing
+- structured context
+
+Sensitive request information is redacted where appropriate.
+
+### Metrics
+
+Application metrics include HTTP-level measurements such as:
+
+- request count
+- error count
+- request duration
+- status codes
+- route patterns
+
+Queue metrics are also exposed for background workloads:
+
+```text
+queue waiting
+queue active
+queue delayed
+```
+
+### Tracing
+
+OpenTelemetry provides distributed tracing for the API and worker processes.
+
+The API and worker use distinct service names:
+
+```text
+nestapp-api
+nestapp-worker
+```
+
+This makes asynchronous processing visible across service boundaries.
+
+### Correlation
+
+Logs, metrics, and traces are designed to be investigated together rather than treated as isolated systems.
+
+The goal is a workflow such as:
+
+```text
+Request
+   ↓
+Trace
+   ↓
+Log
+   ↓
+Queue
+   ↓
+Worker
+   ↓
+Worker Trace
+   ↓
+Worker Logs
+```
+
+---
+
+# Grafana
+
+The repository includes Grafana provisioning for:
+
+- datasources
+- dashboards
+- alerting
+- contact points
+
+A starter overview dashboard is included under:
+
+```text
+infra/observability/grafana/dashboards/
+```
+
+The observability configuration is intentionally kept in source control so the monitoring environment can be reproduced instead of being configured manually through the Grafana UI.
+
+---
+
+# HTTP Layer
+
+The HTTP layer contains cross-cutting concerns such as:
+
+```text
+shared/http/
+├── exceptions/
+├── filters/
+├── interceptors/
+├── middleware/
+└── throttler/
+```
+
+The application uses a centralized exception model with application-level error codes and consistent error handling.
+
+Database-specific errors are mapped into application-level errors rather than leaking infrastructure details directly through HTTP responses.
+
+---
+
+# Configuration
+
+Configuration is centralized under:
+
+```text
+shared/infrastructure/config/
+```
+
+Environment variables are validated during application startup.
+
+The repository provides environment templates rather than committing environment-specific secrets.
+
+```text
+.env.sample
+.env.example
+```
+
+Actual environment files should remain outside version control.
+
+---
+
+# Database
+
+PostgreSQL is accessed through Prisma.
+
+The database layer is isolated under:
+
+```text
+shared/infrastructure/database/prisma/
+```
+
+The Prisma client is wrapped by an application-level service so database lifecycle management remains inside the NestJS infrastructure layer.
+
+---
+
+# Redis
+
+Redis is used as shared infrastructure for capabilities such as:
+
+- caching
+- queue infrastructure
+- distributed coordination
+- throttling
+- Socket.IO adapter support
+
+Redis lifecycle management is handled explicitly by the application infrastructure layer.
+
+---
+
+# Background Jobs
+
+BullMQ provides background job processing.
+
+The queue infrastructure lives under:
+
+```text
+shared/infrastructure/queue/
+```
+
+while workers have their own runtime entry point:
+
+```text
+apps/worker/main.ts
+```
+
+This gives the application a clean boundary between:
+
+```text
+request processing
+```
+
+and
+
+```text
+background processing
+```
+
+without requiring a separate repository.
+
+---
+
+# WebSockets
+
+The WebSocket layer is built around Socket.IO.
+
+```text
+shared/websocket/
+├── base.gateway.ts
+├── base.listener.ts
+├── rooms.contract.ts
+└── socket-io.adapter.ts
+```
+
+The abstraction provides a common foundation for:
+
+- gateways
+- listeners
+- room contracts
+- Redis-backed Socket.IO scaling
+
+The Redis adapter allows multiple application instances to participate in the same WebSocket infrastructure.
+
+---
+
+# Runtime Management
+
+Runtime-specific concerns are isolated under:
+
+```text
+shared/runtime/
+```
+
+including:
+
+- application bootstrap
+- health checks
+- graceful shutdown
+- lifecycle management
+
+Health endpoints are separated from business features so deployment infrastructure can monitor application state without depending on feature modules.
+
+---
+
+# Security & Reliability
+
+The starter includes infrastructure for common backend concerns such as:
+
+- JWT authentication
+- password hashing
+- request throttling
+- Redis-backed throttling
+- HTTP rate limiting
+- centralized exception handling
+- structured logging
+- error tracking
+- graceful shutdown
+- health checks
+- environment validation
+- database error mapping
+
+These are treated as platform concerns rather than duplicated across individual features.
+
+---
+
+# Technology Stack
+
+| Area                 | Technology            |
+| -------------------- | --------------------- |
+| Runtime              | Node.js               |
+| Language             | TypeScript            |
+| Framework            | NestJS                |
+| Database             | PostgreSQL            |
+| ORM                  | Prisma                |
+| Cache / shared state | Redis                 |
+| Background jobs      | BullMQ                |
+| WebSockets           | Socket.IO             |
+| Authentication       | Passport / JWT        |
+| Validation           | class-validator / Zod |
+| Logging              | Pino / nestjs-pino    |
+| Metrics              | OpenTelemetry         |
+| Tracing              | OpenTelemetry / Tempo |
+| Logs                 | Loki                  |
+| Metrics storage      | Prometheus            |
+| Telemetry pipeline   | Grafana Alloy         |
+| Visualization        | Grafana               |
+| Reverse proxy        | Caddy                 |
+| Containerization     | Docker Compose        |
+
+---
+
+# Running Locally
+
+## Requirements
+
+- Node.js
+- Docker
+- Docker Compose
+- PostgreSQL / Redis through the provided infrastructure
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Generate the Prisma client:
+
+```bash
+npm run prisma:generate
+```
+
+Start the infrastructure:
+
+```bash
+docker compose -f infra/app/docker-compose.yml up -d
+```
+
+Run database migrations:
+
+```bash
+npm run prisma:migrate:dev
+```
+
+Start the API:
+
+```bash
+npm run start:dev:api
+```
+
+Start the worker in another terminal:
+
+```bash
+npm run start:dev:worker
+```
+
+---
+
+# Observability
+
+The observability environment can be started independently:
+
+```bash
+docker compose -f infra/observability/docker-compose.yml up -d
+```
+
+This starts the monitoring stack around:
+
+```text
+Grafana
+Prometheus
+Loki
+Tempo
+Alloy
+```
+
+The exact endpoints and credentials are configured through the environment templates under:
+
+```text
+infra/observability/
+```
+
+---
+
+# Development Commands
+
+```bash
+npm run build
+```
+
+Build the application.
+
+```bash
+npm run start:dev:api
+```
+
+Run the API in watch mode.
+
+```bash
+npm run start:dev:worker
+```
+
+Run the worker in watch mode.
+
+```bash
+npm run prisma:generate
+```
+
+Generate the Prisma client.
+
+```bash
+npm run prisma:migrate:dev
+```
+
+Run development migrations.
+
+```bash
+npm run prisma:studio
+```
+
+Open Prisma Studio.
+
+```bash
+npm run format
+```
+
+Format source and test files.
+
+---
+
+# Testing Philosophy
+
+This starter intentionally does **not** aim for arbitrary 100% test coverage.
+
+Tests should protect behavior that matters.
+
+The preferred strategy is:
+
+```text
+Business rules
+      ↓
+Critical workflows
+      ↓
+Infrastructure boundaries
+      ↓
+Integration tests
+      ↓
+Selected end-to-end scenarios
+```
+
+Simple framework plumbing and trivial wrappers don't automatically deserve tests.
+
+The goal is a test suite that provides meaningful confidence without becoming another application to maintain.
+
+---
+
+# Why This Structure?
+
+The purpose of this repository is not to claim that this is the only correct way to structure NestJS.
+
+It is an opinionated example of how I approach backend systems where the application needs:
+
+- independent API and worker processes
+- asynchronous workloads
+- persistent relational data
+- shared Redis infrastructure
+- WebSocket communication
+- centralized configuration
+- structured error handling
+- production observability
+- reproducible infrastructure
+- operational visibility
+
+The structure intentionally favors **clear boundaries and operational simplicity** over abstraction for its own sake.
+
+---
+
+# Project Status
+
+This repository is a **starter / architecture showcase**.
+
+It is intentionally smaller than a production product and does not attempt to provide every possible business feature.
+
+The focus is the underlying engineering foundation:
+
+```text
+Architecture
+Infrastructure
+Runtime separation
+Background processing
+Observability
+Reliability
+Developer experience
+```
+
+---
+
+# Author
+
+**Danial Rahmani**
+
+Backend / Systems Engineer
+
+GitHub: [@dnipy](https://github.com/dnipy)
+
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is currently provided as a personal engineering showcase.
