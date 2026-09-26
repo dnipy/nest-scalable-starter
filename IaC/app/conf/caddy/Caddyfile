@@ -25,10 +25,14 @@
 		reverse_proxy api:3000
 	}
 
-    handle {
-		reverse_proxy frontend:80
+	handle /grafana/* {
+		uri strip_prefix /grafana
+		reverse_proxy grafana:3000
 	}
 
+	handle {
+		reverse_proxy frontend:80
+	}
 }
 
 app.nestapp.com {
@@ -66,4 +70,10 @@ app.nestapp.com {
 	handle {
 		reverse_proxy frontend:80
 	}
+}
+
+grafana.nestapp.com {
+	import common
+
+	reverse_proxy grafana:3000
 }

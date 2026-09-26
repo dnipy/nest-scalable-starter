@@ -169,6 +169,8 @@ services:
     expose:
       - "3000"
 
+    environment:
+      - OTEL_SERVICE_NAME=nestapp-api
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -212,6 +214,9 @@ services:
     command:
       - node
       - dist/src/apps/worker/main.js
+
+    environment:
+      - OTEL_SERVICE_NAME=nestapp-worker
 
     depends_on:
       pgbouncer:
@@ -268,7 +273,7 @@ services:
 
 networks:
   nestapp-network:
-    external: true
+    # external: true
     name: nestapp-network
 
 #################################################
